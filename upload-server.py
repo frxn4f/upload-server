@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Servidor HTTP sencillo para transferir archivos entre máquinas."""
 
 from __future__ import annotations
 
@@ -9,7 +10,6 @@ import json
 import logging
 import mimetypes
 import os
-import sys
 import tempfile
 import uuid
 from datetime import datetime
@@ -58,7 +58,7 @@ log = logging.getLogger("upload-server")
 
 
 class UploadError(Exception):
-    """Error esperado durante una transferencia."""
+    """Error controlado durante una transferencia."""
 
 
 class InvalidRequest(UploadError):
@@ -70,6 +70,7 @@ class RequestTooLarge(UploadError):
 
 
 class RequestBody:
+    """Lector limitado al Content-Length, con buffer para buscar boundaries."""
 
     def __init__(self, stream, length: int):
         self.stream = stream
@@ -106,6 +107,7 @@ class RequestBody:
                 return line
 
     def copy_until(self, marker: bytes, output) -> None:
+        """Copia o descarta el contenido hasta encontrar el siguiente boundary."""
         keep = len(marker) - 1
 
         while True:
@@ -143,10 +145,15 @@ class FileManager:
         return (filename or "archivo.bin")[:MAX_FILENAME_LENGTH]
 
     def create_temp(self) -> tuple[int, Path]:
-        fd, name = tempfile.mkstemp(prefix=".uploaded-", suffix=".part", dir=self.directory)
+        fd, name = tempfile.mkstemp(
+            prefix=".upload-",
+            suffix=".part",
+            dir=self.directory,
+        )
         return fd, Path(name)
 
     def commit(self, temporary: Path, filename: str) -> Path:
+        """Publica el archivo sin reemplazar otro que ya exista."""
         filename = self.safe_name(filename)
         original = Path(filename)
 
@@ -163,9 +170,10 @@ class FileManager:
             except FileExistsError:
                 continue
             except OSError as error:
+                message = error.strerror or str(error)
                 raise OSError(
                     error.errno,
-                    f"No se pudo guardar el archivo en {self.directory}: {error.strerror or error}",
+                    f"No se pudo guardar el archivo en {self.directory}: {message}",
                 ) from error
 
             temporary.unlink(missing_ok=True)
@@ -173,24 +181,11 @@ class FileManager:
 
         raise OSError(errno.EEXIST, "No se pudo encontrar un nombre de archivo libre.")
 
-    def save_part(self, filename: str, reader: RequestBody, marker: bytes) -> tuple[Path, int]:
-        fd, temporary = self.create_temp()
-        try:
-            with os.fdopen(fd, "wb") as output:
-                before = output.tell()
-                reader.copy_until(marker, output)
-                size = output.tell() - before
-            destination = self.commit(temporary, filename)
-            return destination, size
-        except Exception:
-            temporary.unlink(missing_ok=True)
-            raise
-
     def list_files(self) -> list[dict]:
         result = []
         for path in self.directory.iterdir():
             try:
-                if not path.is_file() or path.name.startswith(".uploaded-"):
+                if not path.is_file() or path.name.startswith(".upload-"):
                     continue
                 stat = path.stat()
                 result.append({
@@ -244,7 +239,7 @@ def show_banner(host: str, port: int, directory: Path, max_mb: int) -> None:
     console.print()
     console.print(Panel(
         details,
-        title="[bold #9780ff]UPLOADSERVER[/bold #9780ff]",
+        title="[bold #9780ff]UPLOAD SERVER[/bold #9780ff]",
         subtitle="transferencia de archivos",
         border_style="#9780ff",
         box=box.ROUNDED,
@@ -264,7 +259,7 @@ class UploadServer(ThreadingHTTPServer):
 
 
 class UploadHandler(BaseHTTPRequestHandler):
-    server_version = "Upload Server"
+    server_version = "UploadServer"
     sys_version = ""
 
     def setup(self):
@@ -537,7 +532,7 @@ progress {{ width:100%; margin-top:18px; accent-color:var(--accent); }}
 </style>
 </head>
 <body>
-<header><h1>FRXN <span style="color:#9780ff">UPLOAD</span></h1><p>Transferencia de archivos · v{VERSION}</p></header>
+<header><h1>UPLOAD <span style="color:#9780ff">SERVER</span></h1><p>Transferencia de archivos · v{VERSION}</p></header>
 <section class="panel">
 <form id="form">
 <label class="drop" id="drop"><h3>Suelta los archivos aquí</h3><p>o pulsa para seleccionarlos</p><input id="files" type="file" multiple><div id="selection"></div></label>
@@ -572,7 +567,7 @@ form.onsubmit=event=>{{
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Upload Server — transferencia rápida de archivos",
+        description="Servidor HTTP para transferir archivos",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("port", nargs="?", type=int, default=8000, help="Puerto HTTP")
