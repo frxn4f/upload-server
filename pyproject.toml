@@ -27,7 +27,7 @@ classifiers = [
 Repository = "https://github.com/frxn4f/upload-server"
 
 [project.scripts]
-upload-server = "upload-server:main"
+upload-server = "upload_server:main"
 
 [tool.setuptools]
-py-modules = ["upload-server"]
+py-modules = ["upload_server"]
