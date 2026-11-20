@@ -2,19 +2,26 @@
 
 Un servidor HTTP pequeño para pasar archivos entre máquinas. Lo uso sobre todo en laboratorios de pentesting: subir desde Windows o Linux y recuperar archivos sin montar nada más.
 
-## Requisitos
+## Instalación
 
-- Python 3.10 o superior.
-- [Rich](https://github.com/Textualize/rich), para la salida de terminal.
+Con [pipx](https://pipx.pypa.io/):
 
 ```bash
-python3 -m pip install rich
+pipx install git+https://github.com/frxn4f/upload-server.git
+```
+
+Esto instala también Rich y deja disponible el comando `upload-server`.
+
+Para actualizar:
+
+```bash
+pipx upgrade upload-server
 ```
 
 ## Uso
 
 ```bash
-python3 upload-server.py
+upload-server
 ```
 
 Por defecto escucha en el puerto `8000`, guarda los archivos en `./uploads` y admite peticiones de hasta **500 MB**.
@@ -22,7 +29,13 @@ Por defecto escucha en el puerto `8000`, guarda los archivos en `./uploads` y ad
 Puedes cambiar esos valores:
 
 ```bash
-python3 upload-server.py 8081 --dir /tmp/transfers --max-mb 700
+upload-server 8081 --dir /tmp/transfers --max-mb 700
+```
+
+También puedes limitar la escucha a una interfaz concreta:
+
+```bash
+upload-server --host 127.0.0.1
 ```
 
 En los ejemplos siguientes, cambia `192.168.45.200` por la IP de la máquina donde está ejecutándose el servidor.
@@ -163,3 +176,12 @@ También puedes abrir `http://192.168.45.200:8000/` en el navegador.
 El límite de `--max-mb` se aplica a la petición completa. En una subida múltiple cuentan todos los archivos y los datos adicionales del formulario. Se permiten hasta 20 archivos por petición.
 
 > Escucha en `0.0.0.0` por defecto. Está pensado para redes de laboratorio o de confianza: no tiene autenticación ni HTTPS. No lo expongas directamente a Internet.
+
+## Desarrollo
+
+Para ejecutar el código sin instalarlo:
+
+```bash
+python3 -m pip install rich
+python3 upload-server.py
+```
