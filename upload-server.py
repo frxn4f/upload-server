@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Servidor HTTP sencillo para transferir archivos entre máquinas."""
-
 from __future__ import annotations
 
 import argparse
@@ -70,8 +68,6 @@ class RequestTooLarge(UploadError):
 
 
 class RequestBody:
-    """Lector limitado al Content-Length, con buffer para buscar boundaries."""
-
     def __init__(self, stream, length: int):
         self.stream = stream
         self.remaining = length
@@ -107,7 +103,6 @@ class RequestBody:
                 return line
 
     def copy_until(self, marker: bytes, output) -> None:
-        """Copia o descarta el contenido hasta encontrar el siguiente boundary."""
         keep = len(marker) - 1
 
         while True:
@@ -153,7 +148,6 @@ class FileManager:
         return fd, Path(name)
 
     def commit(self, temporary: Path, filename: str) -> Path:
-        """Publica el archivo sin reemplazar otro que ya exista."""
         filename = self.safe_name(filename)
         original = Path(filename)
 
